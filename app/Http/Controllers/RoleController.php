@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Roles\StoreRoleRequest;
+use App\Http\Requests\Roles\UpdateRoleRequest;
+use App\Services\RoleService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -10,16 +14,28 @@ use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
+    protected RoleService $roleService;
+
+    public function __construct(RoleService $roleService)
+    {
+        $this->roleService = $roleService;
+    }
+
     /**
      * Display a listing of roles.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        abort_unless(auth()->user()->can('view_roles'), 403);
+        abort_unless($request->user()->can('view_roles'), 403);
 
-        $roles = Role::withCount(['users', 'permissions'])
-            ->orderBy('name')
-            ->get();
+        // Get filters from request
+        $filters = [
+            'search' => $request->get('search'),
+            'with_users_count' => true,
+            'with_permissions_count' => true,
+        ];
+
+        $roles = $this->roleService->getAllRoles(array_filter($filters));
 
         return Inertia::render('Roles/Index', [
             'roles' => $roles,
@@ -29,9 +45,9 @@ class RoleController extends Controller
     /**
      * Show the form for creating a new role.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        abort_unless(auth()->user()->can('create_roles'), 403);
+        abort_unless($request->user()->can('create_roles'), 403);
 
         $permissions = Permission::all()->groupBy(function ($permission) {
             return explode('_', $permission->name)[0];
@@ -45,80 +61,64 @@ class RoleController extends Controller
     /**
      * Store a newly created role.
      */
-    public function store(Request $request)
+    public function store(StoreRoleRequest $request): RedirectResponse
     {
-        abort_unless(auth()->user()->can('create_roles'), 403);
+        try {
+            $this->roleService->createRole($request->toDTO());
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name',
-            'permissions' => 'array',
-            'permissions.*' => 'exists:permissions,name',
-        ]);
-
-        $role = Role::create(['name' => $validated['name']]);
-
-        if (!empty($validated['permissions'])) {
-            $role->syncPermissions($validated['permissions']);
+            return redirect()->route('roles.index')->with('success', 'Rôle créé avec succès.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Erreur lors de la création: ' . $e->getMessage()]);
         }
-
-        return redirect()->route('roles.index')->with('success', 'Rôle créé avec succès.');
     }
 
     /**
      * Show the form for editing the specified role.
      */
-    public function edit(Role $role): Response
+    public function edit(Request $request, Role $role): Response
     {
-        abort_unless(auth()->user()->can('update_roles'), 403);
+        abort_unless($request->user()->can('edit_roles'), 403);
 
-        $role->load(['permissions', 'users']);
+        $roleDTO = $this->roleService->getRoleById($role->id);
 
         $allPermissions = Permission::all()->groupBy(function ($permission) {
             return explode('_', $permission->name)[0];
         });
 
         return Inertia::render('Roles/Edit', [
-            'role' => $role,
+            'role' => $roleDTO,
             'allPermissions' => $allPermissions,
-            'rolePermissions' => $role->permissions->pluck('name'),
+            'rolePermissions' => $roleDTO->getPermissionNames(),
         ]);
     }
 
     /**
      * Update the specified role.
      */
-    public function update(Request $request, Role $role)
+    public function update(UpdateRoleRequest $request, Role $role): RedirectResponse
     {
-        abort_unless(auth()->user()->can('update_roles'), 403);
+        try {
+            $this->roleService->updateRole($role->id, $request->toDTO());
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
-            'permissions' => 'array',
-            'permissions.*' => 'exists:permissions,name',
-        ]);
-
-        $role->update(['name' => $validated['name']]);
-
-        if (isset($validated['permissions'])) {
-            $role->syncPermissions($validated['permissions']);
+            return redirect()->route('roles.index')->with('success', 'Rôle mis à jour avec succès.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Erreur lors de la mise à jour: ' . $e->getMessage()]);
         }
-
-        return redirect()->route('roles.index')->with('success', 'Rôle mis à jour avec succès.');
     }
 
     /**
      * Remove the specified role.
      */
-    public function destroy(Role $role)
+    public function destroy(Request $request, Role $role): RedirectResponse
     {
-        abort_unless(auth()->user()->can('delete_roles'), 403);
+        abort_unless($request->user()->can('delete_roles'), 403);
 
-        if ($role->users()->count() > 0) {
-            return redirect()->route('roles.index')->with('error', 'Impossible de supprimer ce rôle car des utilisateurs y sont assignés.');
+        try {
+            $this->roleService->deleteRole($role->id);
+
+            return redirect()->route('roles.index')->with('success', 'Rôle supprimé avec succès.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        $role->delete();
-
-        return redirect()->route('roles.index')->with('success', 'Rôle supprimé avec succès.');
     }
 }

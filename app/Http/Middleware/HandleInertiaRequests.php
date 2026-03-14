@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\AppSetting;
+use App\Services\MenuService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -14,6 +15,21 @@ class HandleInertiaRequests extends Middleware
      * @var string
      */
     protected $rootView = 'app';
+
+    /**
+     * The menu service instance.
+     *
+     * @var MenuService
+     */
+    protected $menuService;
+
+    /**
+     * Create a new middleware instance.
+     */
+    public function __construct(MenuService $menuService)
+    {
+        $this->menuService = $menuService;
+    }
 
     /**
      * Determine the current asset version.
@@ -30,10 +46,12 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+        
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user() ? $request->user()->load('roles') : null,
+                'user' => $user ? $user->load('roles') : null,
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
@@ -43,6 +61,11 @@ class HandleInertiaRequests extends Middleware
                 'app_name' => AppSetting::get('app_name', 'HELPTICKET'),
                 'app_tagline' => AppSetting::get('app_tagline', 'Un ticket, un déclic, HELPTICKET c\'est magique'),
                 'app_logo' => AppSetting::get('app_logo', 'logos/helpticket-logo.png'),
+            ],
+            'navigation' => [
+                'main' => $user ? $this->menuService->getMenuForUser($user, 'main') : [],
+                'user' => $user ? $this->menuService->getMenuForUser($user, 'user') : [],
+                'mobile' => $user ? $this->menuService->getMenuForUser($user, 'mobile') : [],
             ],
         ];
     }

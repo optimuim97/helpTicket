@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
+import MenuRenderer from '@/Components/MenuRenderer.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import { Link } from '@inertiajs/vue3';
 
@@ -40,77 +40,7 @@ const showingNavigationDropdown = ref(false);
                             <div
                                 class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex"
                             >
-                                <NavLink
-                                    :href="route('dashboard')"
-                                    :active="route().current('dashboard')"
-                                >
-                                    Tableau de bord
-                                </NavLink>
-                                <NavLink
-                                    :href="route('tickets.index')"
-                                    :active="route().current('tickets.*')"
-                                >
-                                    Tickets
-                                </NavLink>
-                                <NavLink
-                                    v-if="$page.props.auth.user.roles?.some(r => r.name === 'Superviseur')"
-                                    :href="route('reports.agent-performance')"
-                                    :active="route().current('reports.*')"
-                                >
-                                    Rapports
-                                </NavLink>
-                                
-                                <!-- Administration Dropdown for Superviseur -->
-                                <div
-                                    v-if="$page.props.auth.user.roles?.some(r => r.name === 'Superviseur')"
-                                    class="hidden sm:flex sm:items-center"
-                                >
-                                    <Dropdown align="left" width="48">
-                                        <template #trigger>
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium leading-5 transition duration-150 ease-in-out focus:outline-none"
-                                                :class="[
-                                                    route().current('users.*') || route().current('roles.*') || route().current('services.*') || route().current('settings.*')
-                                                        ? 'border-indigo-400 text-gray-900 focus:border-indigo-700'
-                                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 focus:border-gray-300 focus:text-gray-700'
-                                                ]"
-                                            >
-                                                <span>Administration</span>
-                                                <svg
-                                                    class="ms-2 -me-0.5 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fill-rule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clip-rule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </template>
-                                        <template #content>
-                                            <DropdownLink :href="route('users.index')">
-                                                Utilisateurs
-                                            </DropdownLink>
-                                            <DropdownLink :href="route('roles.index')">
-                                                Rôles
-                                            </DropdownLink>
-                                            <DropdownLink :href="route('services.index')">
-                                                Services
-                                            </DropdownLink>
-                                            <DropdownLink :href="route('permissions.index')">
-                                                Permissions
-                                            </DropdownLink>
-                                            <div class="border-t border-gray-100"></div>
-                                            <DropdownLink :href="route('settings.index')">
-                                                Paramètres
-                                            </DropdownLink>
-                                        </template>
-                                    </Dropdown>
-                                </div>
+                                <MenuRenderer :items="$page.props.navigation?.main || []" type="desktop" />
                             </div>
                         </div>
 
@@ -143,18 +73,17 @@ const showingNavigationDropdown = ref(false);
                                     </template>
 
                                     <template #content>
-                                        <DropdownLink
-                                            :href="route('profile.edit')"
-                                        >
-                                            Profile
-                                        </DropdownLink>
-                                        <DropdownLink
-                                            :href="route('logout')"
-                                            method="post"
-                                            as="button"
-                                        >
-                                            Log Out
-                                        </DropdownLink>
+                                        <template v-for="(item, index) in ($page.props.navigation?.user || [])" :key="index">
+                                            <div v-if="item.type === 'separator'" class="border-t border-gray-100"></div>
+                                            <DropdownLink
+                                                v-else
+                                                :href="item.route ? route(item.route) : '#'"
+                                                :method="item.method || 'get'"
+                                                :as="item.method === 'post' ? 'button' : 'a'"
+                                            >
+                                                {{ item.label }}
+                                            </DropdownLink>
+                                        </template>
                                     </template>
                                 </Dropdown>
                             </div>

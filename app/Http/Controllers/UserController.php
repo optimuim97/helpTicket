@@ -2,33 +2,62 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Http\Requests\Users\StoreUserRequest;
+use App\Http\Requests\Users\UpdateUserRequest;
 use App\Models\Service;
+use App\Models\User;
+use App\Services\UserService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
+    protected UserService $userService;
+
+    public function __construct(UserService $userService)
+    {
+        $this->userService = $userService;
+    }
+
     /**
      * Display a listing of users.
      */
     public function index(Request $request): Response
     {
-        // Only supervisors can manage users
-        if (!$request->user()->hasRole('Superviseur')) {
-            abort(403, 'Accès refusé. Seuls les superviseurs peuvent gérer les utilisateurs.');
+        // Check permission
+        if (!$request->user()->can('view_users')) {
+            abort(403, 'Accès refusé. Vous n\'avez pas la permission de voir les utilisateurs.');
         }
 
-        $users = User::with(['roles', 'service', 'permissions'])->paginate(15);
+        // Get filters from request
+        $filters = [
+            'role' => $request->get('role'),
+            'service_id' => $request->get('service_id'),
+            'search' => $request->get('search'),
+        ];
+
+        $usersCollection = $this->userService->getAllUsers(array_filter($filters));
+        
+        // Paginate manually
+        $perPage = 15;
+        $page = $request->get('page', 1);
+        $total = $usersCollection->count();
+        $users = $usersCollection->slice(($page - 1) * $perPage, $perPage)->values();
 
         return Inertia::render('Users/Index', [
-            'users' => $users,
+            'users' => [
+                'data' => $users,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'last_page' => ceil($total / $perPage),
+            ],
             'roles' => Role::all(),
+            'filters' => $filters,
         ]);
     }
 
@@ -37,7 +66,7 @@ class UserController extends Controller
      */
     public function create(Request $request): Response
     {
-        if (!$request->user()->hasRole('Superviseur')) {
+        if (!$request->user()->can('create_users')) {
             abort(403);
         }
 
@@ -50,30 +79,15 @@ class UserController extends Controller
     /**
      * Store a newly created user.
      */
-    public function store(Request $request)
+    public function store(StoreUserRequest $request): RedirectResponse
     {
-        if (!$request->user()->hasRole('Superviseur')) {
-            abort(403);
+        try {
+            $this->userService->createUser($request->toDTO());
+
+            return redirect()->route('users.index')->with('success', 'Utilisateur créé avec succès.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Erreur lors de la création: ' . $e->getMessage()]);
         }
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => 'required|exists:roles,name',
-            'service_id' => 'nullable|exists:services,id',
-        ]);
-
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'service_id' => $validated['service_id'] ?? null,
-        ]);
-
-        $user->assignRole($validated['role']);
-
-        return redirect()->route('users.index')->with('success', 'Utilisateur créé avec succès.');
     }
 
     /**
@@ -81,9 +95,12 @@ class UserController extends Controller
      */
     public function edit(Request $request, User $user): Response
     {
-        if (!$request->user()->hasRole('Superviseur')) {
+        if (!$request->user()->can('edit_users')) {
             abort(403);
         }
+
+        // Get user as DTO
+        $userDTO = $this->userService->getUserById($user->id);
 
         // Get all permissions grouped by category (first part before underscore)
         $permissions = Permission::all()->groupBy(function ($permission) {
@@ -98,7 +115,7 @@ class UserController extends Controller
         });
 
         return Inertia::render('Users/Edit', [
-            'user' => $user->load(['roles.permissions', 'service', 'permissions']),
+            'user' => $userDTO,
             'roles' => Role::all(),
             'services' => Service::active()->orderBy('name')->get(),
             'allPermissions' => $permissionsGrouped,
@@ -108,50 +125,23 @@ class UserController extends Controller
     /**
      * Update the specified user.
      */
-    public function update(Request $request, User $user)
+    public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
-        if (!$request->user()->hasRole('Superviseur')) {
-            abort(403);
+        try {
+            $this->userService->updateUser($user->id, $request->toDTO());
+
+            return redirect()->route('users.index')->with('success', 'Utilisateur mis à jour avec succès.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Erreur lors de la mise à jour: ' . $e->getMessage()]);
         }
-
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
-            'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
-            'role' => 'sometimes|exists:roles,name',
-            'service_id' => 'nullable|exists:services,id',
-            'permissions' => 'sometimes|array',
-            'permissions.*' => 'exists:permissions,name',
-        ]);
-
-        $user->update([
-            'name' => $validated['name'] ?? $user->name,
-            'email' => $validated['email'] ?? $user->email,
-            'service_id' => $validated['service_id'] ?? $user->service_id,
-        ]);
-
-        if (isset($validated['password'])) {
-            $user->update(['password' => Hash::make($validated['password'])]);
-        }
-
-        if (isset($validated['role'])) {
-            $user->syncRoles([$validated['role']]);
-        }
-
-        // Sync direct user permissions (separate from role permissions)
-        if (isset($validated['permissions'])) {
-            $user->syncPermissions($validated['permissions']);
-        }
-
-        return redirect()->route('users.index')->with('success', 'Utilisateur mis à jour avec succès.');
     }
 
     /**
      * Remove the specified user.
      */
-    public function destroy(Request $request, User $user)
+    public function destroy(Request $request, User $user): RedirectResponse
     {
-        if (!$request->user()->hasRole('Superviseur')) {
+        if (!$request->user()->can('delete_users')) {
             abort(403);
         }
 
@@ -160,8 +150,12 @@ class UserController extends Controller
             return back()->withErrors(['error' => 'Vous ne pouvez pas supprimer votre propre compte.']);
         }
 
-        $user->delete();
+        try {
+            $this->userService->deleteUser($user->id);
 
-        return redirect()->route('users.index')->with('success', 'Utilisateur supprimé avec succès.');
+            return redirect()->route('users.index')->with('success', 'Utilisateur supprimé avec succès.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Erreur lors de la suppression: ' . $e->getMessage()]);
+        }
     }
 }
