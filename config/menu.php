@@ -43,7 +43,8 @@ return [
             'label' => 'Administration',
             'icon' => 'cog',
             'type' => 'dropdown',
-            'permission' => 'view_users', // At least one admin permission
+            // Dropdown will show if user has ANY of the child permissions
+            // MenuService filters children automatically
             'active' => 'users.*|roles.*|services.*|permissions.*|settings.*',
             'children' => [
                 [

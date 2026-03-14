@@ -37,6 +37,7 @@ const handleLogoChange = (event) => {
 
 const uploadLogo = () => {
     logoForm.post(route('settings.upload-logo'), {
+        forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
             logoForm.reset();

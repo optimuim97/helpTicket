@@ -32,6 +32,7 @@ class PermissionSeeder extends Seeder
             'view_users',
             'create_users',
             'update_users',
+            'edit_users',  // Alias for update_users (used in controllers)
             'delete_users',
             'manage_user_permissions',
             
@@ -39,6 +40,7 @@ class PermissionSeeder extends Seeder
             'view_roles',
             'create_roles',
             'update_roles',
+            'edit_roles',  // Alias for update_roles (used in controllers)
             'delete_roles',
             'manage_role_permissions',
             
@@ -46,6 +48,7 @@ class PermissionSeeder extends Seeder
             'view_services',
             'create_services',
             'update_services',
+            'edit_services',  // Alias for update_services (used in controllers)
             'delete_services',
             
             // Reports permissions

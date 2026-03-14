@@ -65,6 +65,9 @@ class AppSettingController extends Controller
 
         // Update setting
         AppSetting::set('app_logo', $path);
+        
+        \Illuminate\Support\Facades\Cache::forget('app_setting_app_logo');
+
 
         return redirect()->route('settings.index')->with('success', 'Logo mis à jour avec succès.');
     }
