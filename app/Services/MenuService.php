@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 class MenuService
 {
@@ -16,9 +17,14 @@ class MenuService
      */
     public function getMenuForUser(User $user, string $menuKey = 'main'): array
     {
-        $menuConfig = config("menu.{$menuKey}", []);
-        
-        return $this->filterMenuItems($menuConfig, $user);
+        // Cache key includes a hash of the user's roles so it auto-invalidates on role change
+        $rolesHash = md5($user->getRoleNames()->sort()->implode(','));
+        $cacheKey = "menu_{$menuKey}_{$user->id}_{$rolesHash}";
+
+        return Cache::remember($cacheKey, 900, function () use ($user, $menuKey) {
+            $menuConfig = config("menu.{$menuKey}", []);
+            return $this->filterMenuItems($menuConfig, $user);
+        });
     }
 
     /**

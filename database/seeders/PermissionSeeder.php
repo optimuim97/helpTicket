@@ -51,6 +51,12 @@ class PermissionSeeder extends Seeder
             'edit_services',  // Alias for update_services (used in controllers)
             'delete_services',
             
+            // Projects permissions
+            'view_projects',
+            'create_projects',
+            'edit_projects',
+            'delete_projects',
+
             // Reports permissions
             'view_reports',
             'export_reports',
@@ -77,6 +83,8 @@ class PermissionSeeder extends Seeder
                 'create_tickets',
                 'update_tickets',
                 'view_users',
+                'view_projects',
+                'create_projects',
             ]);
         }
 
@@ -86,6 +94,7 @@ class PermissionSeeder extends Seeder
                 'view_own_tickets',
                 'update_tickets',
                 'resolve_tickets',
+                'view_projects',
             ]);
         }
     }

@@ -33,6 +33,13 @@ return [
             'active' => 'tickets.*',
         ],
         [
+            'label' => 'Projets',
+            'route' => 'projects.index',
+            'icon' => 'folder',
+            'permission' => 'view_projects',
+            'active' => 'projects.*',
+        ],
+        [
             'label' => 'Rapports',
             'route' => 'reports.agent-performance',
             'icon' => 'chart-bar',
@@ -45,7 +52,7 @@ return [
             'type' => 'dropdown',
             // Dropdown will show if user has ANY of the child permissions
             // MenuService filters children automatically
-            'active' => 'users.*|roles.*|services.*|permissions.*|settings.*',
+            'active' => 'users.*|roles.*|services.*|permissions.*|settings.*|projects.*',
             'children' => [
                 [
                     'label' => 'Utilisateurs',
@@ -114,6 +121,12 @@ return [
             'label' => 'Tickets',
             'route' => 'tickets.index',
             'active' => 'tickets.*',
+        ],
+        [
+            'label' => 'Projets',
+            'route' => 'projects.index',
+            'permission' => 'view_projects',
+            'active' => 'projects.*',
         ],
         [
             'label' => 'Rapports',

@@ -10,20 +10,23 @@ import TextInput from '@/Components/TextInput.vue';
 import Modal from '@/Components/Modal.vue';
 
 const props = defineProps({
-    types: Array,
-    channels: Array,
-    priorities: Array,
-    users: Array,
+    types:                Array,
+    channels:             Array,
+    priorities:           Array,
+    users:                Array,
+    projects:             Array,
+    preselectedProjectId: [String, Number, null],
 });
 
 const form = useForm({
-    type_id: '',
-    channel_id: '',
+    project_id:  props.preselectedProjectId ?? '',
+    type_id:     '',
+    channel_id:  '',
     priority_id: '',
-    subject: '',
+    subject:     '',
     description: '',
     assigned_to: '',
-    due_date: '',
+    due_date:    '',
 });
 
 const showDuplicateModal = ref(false);
@@ -100,6 +103,22 @@ const closeDuplicateModal = () => {
                     <div class="p-6">
                         <form @submit.prevent="handleSubmit">
                             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                <!-- Projet (optionnel) -->
+                                <div class="md:col-span-2" v-if="projects && projects.length > 0">
+                                    <InputLabel for="project_id" value="Projet" />
+                                    <select
+                                        id="project_id"
+                                        v-model="form.project_id"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    >
+                                        <option value="">Aucun projet</option>
+                                        <option v-for="project in projects" :key="project.id" :value="project.id">
+                                            {{ project.name }}
+                                        </option>
+                                    </select>
+                                    <InputError class="mt-2" :message="form.errors.project_id" />
+                                </div>
+
                                 <div>
                                     <InputLabel for="type_id" value="Type *" />
                                     <select

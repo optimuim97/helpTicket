@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppSettingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
@@ -60,6 +61,9 @@ Route::middleware('auth')->group(function () {
     Route::post('users/{user}/permissions/{permission}', [UserPermissionController::class, 'assign'])->name('users.permissions.assign');
     Route::delete('users/{user}/permissions/{permission}', [UserPermissionController::class, 'revoke'])->name('users.permissions.revoke');
     
+    // Projects Management
+    Route::resource('projects', ProjectController::class);
+
     // Services Management
     Route::resource('services', ServiceController::class);
 

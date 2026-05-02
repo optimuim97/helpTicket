@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\TicketType;
 use App\Models\TicketChannel;
@@ -16,6 +17,7 @@ use App\Notifications\DeadlineExtendedNotification;
 use App\Services\TicketNumberGenerator;
 use App\Services\DuplicateDetectionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -81,9 +83,9 @@ class TicketController extends Controller
         return Inertia::render('Tickets/Index', [
             'tickets' => $tickets,
             'filters' => $request->only(['search', 'status_id', 'priority_id', 'type_id', 'assigned_to']),
-            'statuses' => TicketStatus::all(),
-            'priorities' => TicketPriority::all(),
-            'types' => TicketType::all(),
+            'statuses' => TicketStatus::allCached(),
+            'priorities' => TicketPriority::allCached(),
+            'types' => TicketType::allCached(),
             'users' => $users,
         ]);
     }
@@ -96,9 +98,11 @@ class TicketController extends Controller
         $this->authorize('create', Ticket::class);
 
         return Inertia::render('Tickets/Create', [
-            'types' => TicketType::all(),
-            'channels' => TicketChannel::all(),
-            'priorities' => TicketPriority::all(),
+            'types'      => TicketType::allCached(),
+            'channels'   => TicketChannel::allCached(),
+            'priorities' => TicketPriority::allCached(),
+            'projects'   => Project::orderBy('name')->get(['id', 'name', 'status']),
+            'preselectedProjectId' => request()->query('project_id'),
         ]);
     }
 
@@ -110,36 +114,38 @@ class TicketController extends Controller
         $this->authorize('create', Ticket::class);
 
         $validated = $request->validate([
-            'type_id' => 'required|exists:ticket_types,id',
-            'channel_id' => 'required|exists:ticket_channels,id',
+            'project_id'  => 'nullable|exists:projects,id',
+            'type_id'     => 'required|exists:ticket_types,id',
+            'channel_id'  => 'required|exists:ticket_channels,id',
             'priority_id' => 'required|exists:ticket_priorities,id',
-            'subject' => 'required|string|max:255',
+            'subject'     => 'required|string|max:255',
             'description' => 'required|string',
-            'notes' => 'nullable|string',
-            'due_date' => 'nullable|date|after:now',
+            'notes'       => 'nullable|string',
+            'due_date'    => 'nullable|date|after:now',
         ]);
 
-        // Get default "Nouveau" status
-        $defaultStatus = TicketStatus::where('name', 'Nouveau')->first();
+        $defaultStatus = Cache::remember('status_id_nouveau', 3600, fn () =>
+            TicketStatus::where('name', 'Nouveau')->first()
+        );
 
         $ticket = Ticket::create([
             'ticket_number' => $generator->generate(),
-            'type_id' => $validated['type_id'],
-            'channel_id' => $validated['channel_id'],
-            'priority_id' => $validated['priority_id'],
-            'status_id' => $defaultStatus->id,
-            'subject' => $validated['subject'],
-            'description' => $validated['description'],
-            'notes' => $validated['notes'] ?? null,
-            'created_by' => $request->user()->id,
-            'due_date' => $validated['due_date'] ?? null,
+            'project_id'    => $validated['project_id'] ?? null,
+            'type_id'       => $validated['type_id'],
+            'channel_id'    => $validated['channel_id'],
+            'priority_id'   => $validated['priority_id'],
+            'status_id'     => $defaultStatus->id,
+            'subject'       => $validated['subject'],
+            'description'   => $validated['description'],
+            'notes'         => $validated['notes'] ?? null,
+            'created_by'    => $request->user()->id,
+            'due_date'      => $validated['due_date'] ?? null,
         ]);
 
-        // Notify supervisors about new ticket
-        $supervisors = User::whereHas('roles', function ($query) {
-            $query->where('name', 'Superviseur');
-        })->get();
-        
+        $supervisors = Cache::remember('users_role_superviseur', 300, fn () =>
+            User::whereHas('roles', fn ($q) => $q->where('name', 'Superviseur'))->get()
+        );
+
         Notification::send($supervisors, new TicketCreatedNotification($ticket->load(['priority', 'type', 'createdBy'])));
 
         return redirect()->route('tickets.show', $ticket)->with('success', 'Ticket créé avec succès.');
@@ -218,11 +224,12 @@ class TicketController extends Controller
         $this->authorize('update', $ticket);
 
         return Inertia::render('Tickets/Edit', [
-            'ticket' => $ticket->load(['type', 'channel', 'priority', 'status']),
-            'types' => TicketType::all(),
-            'channels' => TicketChannel::all(),
-            'priorities' => TicketPriority::all(),
-            'statuses' => TicketStatus::all(),
+            'ticket'   => $ticket->load(['type', 'channel', 'priority', 'status', 'project']),
+            'types'    => TicketType::allCached(),
+            'channels' => TicketChannel::allCached(),
+            'priorities' => TicketPriority::allCached(),
+            'statuses' => TicketStatus::allCached(),
+            'projects' => Project::orderBy('name')->get(['id', 'name', 'status']),
         ]);
     }
 
@@ -234,14 +241,15 @@ class TicketController extends Controller
         $this->authorize('update', $ticket);
 
         $validated = $request->validate([
-            'type_id' => 'sometimes|exists:ticket_types,id',
-            'channel_id' => 'sometimes|exists:ticket_channels,id',
+            'project_id'  => 'nullable|exists:projects,id',
+            'type_id'     => 'sometimes|exists:ticket_types,id',
+            'channel_id'  => 'sometimes|exists:ticket_channels,id',
             'priority_id' => 'sometimes|exists:ticket_priorities,id',
-            'status_id' => 'sometimes|exists:ticket_statuses,id',
-            'subject' => 'sometimes|string|max:255',
+            'status_id'   => 'sometimes|exists:ticket_statuses,id',
+            'subject'     => 'sometimes|string|max:255',
             'description' => 'sometimes|string',
-            'notes' => 'nullable|string',
-            'due_date' => 'nullable|date',
+            'notes'       => 'nullable|string',
+            'due_date'    => 'nullable|date',
         ]);
 
         $ticket->update($validated);
@@ -289,8 +297,12 @@ class TicketController extends Controller
     {
         $this->authorize('close', $ticket);
 
-        $closedStatus = TicketStatus::where('name', 'Fermé')->first();
-        $resolvedStatus = TicketStatus::where('name', 'Résolu')->first();
+        $closedStatus = Cache::remember('status_id_ferme', 3600, fn () =>
+            TicketStatus::where('name', 'Fermé')->first()
+        );
+        $resolvedStatus = Cache::remember('status_id_resolu', 3600, fn () =>
+            TicketStatus::where('name', 'Résolu')->first()
+        );
 
         $ticket->update([
             'status_id' => $closedStatus->id,
@@ -313,7 +325,9 @@ class TicketController extends Controller
     {
         $this->authorize('resolve', $ticket);
 
-        $resolvedStatus = TicketStatus::where('name', 'Résolu')->first();
+        $resolvedStatus = Cache::remember('status_id_resolu', 3600, fn () =>
+            TicketStatus::where('name', 'Résolu')->first()
+        );
 
         $ticket->update([
             'status_id' => $resolvedStatus->id,
@@ -350,11 +364,10 @@ class TicketController extends Controller
             $ticket->createdBy->notify(new DeadlineExtendedNotification($ticket, $oldDueDate, $validated['due_date']));
         }
 
-        // Notify supervisors
-        $supervisors = User::whereHas('roles', function ($query) {
-            $query->where('name', 'Superviseur');
-        })->get();
-        
+        $supervisors = Cache::remember('users_role_superviseur', 300, fn () =>
+            User::whereHas('roles', fn ($q) => $q->where('name', 'Superviseur'))->get()
+        );
+
         foreach ($supervisors as $supervisor) {
             if ($supervisor->id !== $ticket->created_by) {
                 $supervisor->notify(new DeadlineExtendedNotification($ticket, $oldDueDate, $validated['due_date']));

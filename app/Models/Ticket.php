@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class Ticket extends Model
 {
@@ -13,6 +14,7 @@ class Ticket extends Model
 
     protected $fillable = [
         'ticket_number',
+        'project_id',
         'type_id',
         'channel_id',
         'priority_id',
@@ -34,6 +36,11 @@ class Ticket extends Model
     ];
 
     // Relationships
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
     public function type(): BelongsTo
     {
         return $this->belongsTo(TicketType::class, 'type_id');
@@ -87,16 +94,18 @@ class Ticket extends Model
     // Scopes
     public function scopeOpen($query)
     {
-        return $query->whereHas('status', function ($q) {
-            $q->where('is_closed', false);
-        });
+        $ids = Cache::remember('ticket_status_open_ids', 3600, fn () =>
+            TicketStatus::where('is_closed', false)->pluck('id')
+        );
+        return $query->whereIn('status_id', $ids);
     }
 
     public function scopeClosed($query)
     {
-        return $query->whereHas('status', function ($q) {
-            $q->where('is_closed', true);
-        });
+        $ids = Cache::remember('ticket_status_closed_ids', 3600, fn () =>
+            TicketStatus::where('is_closed', true)->pluck('id')
+        );
+        return $query->whereIn('status_id', $ids);
     }
 
     public function scopeAssignedTo($query, $userId)

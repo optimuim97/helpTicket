@@ -8,21 +8,23 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 
 const props = defineProps({
-    ticket: Object,
-    types: Array,
-    channels: Array,
+    ticket:     Object,
+    types:      Array,
+    channels:   Array,
     priorities: Array,
-    statuses: Array,
+    statuses:   Array,
+    projects:   Array,
 });
 
 const form = useForm({
-    type_id: props.ticket.type_id,
-    channel_id: props.ticket.channel_id,
+    project_id:  props.ticket.project_id ?? '',
+    type_id:     props.ticket.type_id,
+    channel_id:  props.ticket.channel_id,
     priority_id: props.ticket.priority_id,
-    status_id: props.ticket.status_id,
-    subject: props.ticket.subject,
+    status_id:   props.ticket.status_id,
+    subject:     props.ticket.subject,
     description: props.ticket.description,
-    due_date: props.ticket.due_date ? new Date(props.ticket.due_date).toISOString().slice(0, 16) : '',
+    due_date:    props.ticket.due_date ? new Date(props.ticket.due_date).toISOString().slice(0, 16) : '',
 });
 
 const submit = () => {
@@ -46,6 +48,22 @@ const submit = () => {
                     <div class="p-6">
                         <form @submit.prevent="submit">
                             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                <!-- Projet -->
+                                <div class="md:col-span-2" v-if="projects && projects.length > 0">
+                                    <InputLabel for="project_id" value="Projet" />
+                                    <select
+                                        id="project_id"
+                                        v-model="form.project_id"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    >
+                                        <option value="">Aucun projet</option>
+                                        <option v-for="project in projects" :key="project.id" :value="project.id">
+                                            {{ project.name }}
+                                        </option>
+                                    </select>
+                                    <InputError class="mt-2" :message="form.errors.project_id" />
+                                </div>
+
                                 <div>
                                     <InputLabel for="type_id" value="Type *" />
                                     <select
