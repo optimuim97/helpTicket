@@ -35,7 +35,7 @@ L'entrypoint exécute automatiquement :
 - `php artisan db:seed --force` si `RUN_SEEDERS=1` (annuaire + référentiels)
 - `config/route/view/event:cache`
 
-## Reverse proxy (sous-domaine tique.softara.tech)
+## Reverse proxy (sous-domaine tickets.softara.tech)
 
 L'app écoute sur `${APP_PORT:-8080}` côté hôte. Pointe ton reverse proxy (Nginx / Traefik / Caddy) du sous-domaine vers `http://127.0.0.1:8080`.
 
@@ -43,15 +43,15 @@ L'app écoute sur `${APP_PORT:-8080}` côté hôte. Pointe ton reverse proxy (Ng
 ```nginx
 server {
     listen 80;
-    server_name tique.softara.tech;
+    server_name tickets.softara.tech;
     return 301 https://$host$request_uri;
 }
 server {
     listen 443 ssl http2;
-    server_name tique.softara.tech;
+    server_name tickets.softara.tech;
 
-    ssl_certificate     /etc/letsencrypt/live/tique.softara.tech/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/tique.softara.tech/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/tickets.softara.tech/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/tickets.softara.tech/privkey.pem;
 
     client_max_body_size 25M;
 
@@ -68,7 +68,7 @@ server {
 
 ### Certificat
 ```bash
-sudo certbot --nginx -d tique.softara.tech
+sudo certbot --nginx -d tickets.softara.tech
 ```
 
 ## Mises à jour (déploiement continu)
