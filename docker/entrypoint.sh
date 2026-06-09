@@ -17,8 +17,22 @@ fi
 
 # Générer la clé si elle manque
 if [ -z "${APP_KEY:-}" ] || [ "${APP_KEY}" = "base64:" ]; then
-    echo "→ Génération de APP_KEY…"
+    echo "⚠️  APP_KEY manquante dans l'environnement."
+    # key:generate écrit dans /var/www/html/.env → on crée un stub temporaire
+    touch /var/www/html/.env
     php artisan key:generate --force --no-interaction
+    NEW_KEY=$(grep "^APP_KEY=" /var/www/html/.env | cut -d '=' -f2-)
+    export APP_KEY="${NEW_KEY}"
+    echo ""
+    echo "════════════════════════════════════════════════════════════════════"
+    echo "👉 Ajoute cette ligne dans ton .env du serveur (à côté du compose) :"
+    echo ""
+    echo "   APP_KEY=${NEW_KEY}"
+    echo ""
+    echo "   Puis redémarre :  docker compose up -d"
+    echo "   (sinon la clé sera régénérée à chaque restart et les sessions casseront)"
+    echo "════════════════════════════════════════════════════════════════════"
+    echo ""
 fi
 
 # Lien storage pour les uploads
