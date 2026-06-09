@@ -1,21 +1,25 @@
 <script setup>
-import { Head, useForm, Link } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/InputLabel.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import TextInput from '@/Components/TextInput.vue';
 
-const props = defineProps({
-    project:  Object,
-    statuses: Object,
-});
+const props = defineProps({ project: Object, statuses: Object });
 
 const form = useForm({
-    name:        props.project.name,
+    name: props.project.name,
     description: props.project.description ?? '',
-    status:      props.project.status,
-    start_date:  props.project.start_date ?? '',
-    due_date:    props.project.due_date ?? '',
+    status: props.project.status,
+    start_date: props.project.start_date ?? '',
+    due_date: props.project.due_date ?? '',
 });
 
 const submit = () => form.put(route('projects.update', props.project.id));
+
+const inputClass = 'mt-1.5 block w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-primary focus:ring-primary';
 </script>
 
 <template>
@@ -23,119 +27,58 @@ const submit = () => form.put(route('projects.update', props.project.id));
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex items-center gap-3">
-                <Link :href="route('projects.show', project.id)" class="text-gray-400 hover:text-gray-600">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                </Link>
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                    Modifier : {{ project.name }}
-                </h2>
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-primary">Édition projet</p>
+                <h1 class="text-2xl font-bold text-slate-900">{{ project.name }}</h1>
             </div>
         </template>
 
-        <div class="py-12">
-            <div class="mx-auto max-w-3xl sm:px-6 lg:px-8">
-                <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <form @submit.prevent="submit" class="space-y-6">
-
-                            <!-- Nom -->
-                            <div>
-                                <label for="name" class="block text-sm font-medium text-gray-700">
-                                    Nom du projet <span class="text-red-600">*</span>
-                                </label>
-                                <input
-                                    id="name"
-                                    v-model="form.name"
-                                    type="text"
-                                    required
-                                    class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                />
-                                <p v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</p>
-                            </div>
-
-                            <!-- Description -->
-                            <div>
-                                <label for="description" class="block text-sm font-medium text-gray-700">
-                                    Description
-                                </label>
-                                <textarea
-                                    id="description"
-                                    v-model="form.description"
-                                    rows="4"
-                                    class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                ></textarea>
-                                <p v-if="form.errors.description" class="mt-1 text-sm text-red-600">{{ form.errors.description }}</p>
-                            </div>
-
-                            <!-- Statut -->
-                            <div>
-                                <label for="status" class="block text-sm font-medium text-gray-700">
-                                    Statut <span class="text-red-600">*</span>
-                                </label>
-                                <select
-                                    id="status"
-                                    v-model="form.status"
-                                    required
-                                    class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                >
-                                    <option v-for="(label, key) in statuses" :key="key" :value="key">
-                                        {{ label }}
-                                    </option>
-                                </select>
-                                <p v-if="form.errors.status" class="mt-1 text-sm text-red-600">{{ form.errors.status }}</p>
-                            </div>
-
-                            <!-- Dates -->
-                            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                <div>
-                                    <label for="start_date" class="block text-sm font-medium text-gray-700">
-                                        Date de début
-                                    </label>
-                                    <input
-                                        id="start_date"
-                                        v-model="form.start_date"
-                                        type="date"
-                                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    />
-                                    <p v-if="form.errors.start_date" class="mt-1 text-sm text-red-600">{{ form.errors.start_date }}</p>
-                                </div>
-                                <div>
-                                    <label for="due_date" class="block text-sm font-medium text-gray-700">
-                                        Date de fin prévue
-                                    </label>
-                                    <input
-                                        id="due_date"
-                                        v-model="form.due_date"
-                                        type="date"
-                                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    />
-                                    <p v-if="form.errors.due_date" class="mt-1 text-sm text-red-600">{{ form.errors.due_date }}</p>
-                                </div>
-                            </div>
-
-                            <!-- Actions -->
-                            <div class="flex items-center justify-end gap-4 pt-2">
-                                <Link
-                                    :href="route('projects.show', project.id)"
-                                    class="rounded-md bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-300"
-                                >
-                                    Annuler
-                                </Link>
-                                <button
-                                    type="submit"
-                                    :disabled="form.processing"
-                                    class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
-                                >
-                                    {{ form.processing ? 'Enregistrement…' : 'Enregistrer' }}
-                                </button>
-                            </div>
-                        </form>
+        <div class="mx-auto max-w-3xl">
+            <form @submit.prevent="submit" class="space-y-6">
+                <section class="card p-6">
+                    <h2 class="text-base font-semibold text-slate-800">Informations</h2>
+                    <div class="mt-5 space-y-5">
+                        <div>
+                            <InputLabel for="name" value="Nom du projet *" />
+                            <TextInput id="name" v-model="form.name" type="text" required class="mt-1.5" />
+                            <InputError class="mt-2" :message="form.errors.name" />
+                        </div>
+                        <div>
+                            <InputLabel for="description" value="Description" />
+                            <textarea id="description" v-model="form.description" rows="4" :class="inputClass"></textarea>
+                            <InputError class="mt-2" :message="form.errors.description" />
+                        </div>
                     </div>
+                </section>
+
+                <section class="card p-6">
+                    <h2 class="text-base font-semibold text-slate-800">Statut & dates</h2>
+                    <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-3">
+                        <div>
+                            <InputLabel for="status" value="Statut *" />
+                            <select id="status" v-model="form.status" required :class="inputClass">
+                                <option v-for="(label, key) in statuses" :key="key" :value="key">{{ label }}</option>
+                            </select>
+                            <InputError class="mt-2" :message="form.errors.status" />
+                        </div>
+                        <div>
+                            <InputLabel for="start_date" value="Date de début" />
+                            <input id="start_date" v-model="form.start_date" type="date" :class="inputClass" />
+                            <InputError class="mt-2" :message="form.errors.start_date" />
+                        </div>
+                        <div>
+                            <InputLabel for="due_date" value="Date de fin prévue" />
+                            <input id="due_date" v-model="form.due_date" type="date" :class="inputClass" />
+                            <InputError class="mt-2" :message="form.errors.due_date" />
+                        </div>
+                    </div>
+                </section>
+
+                <div class="flex items-center justify-end gap-3">
+                    <SecondaryButton type="button" @click="$inertia.visit(route('projects.show', project.id))">Annuler</SecondaryButton>
+                    <PrimaryButton :disabled="form.processing">{{ form.processing ? 'Enregistrement…' : 'Enregistrer' }}</PrimaryButton>
                 </div>
-            </div>
+            </form>
         </div>
     </AuthenticatedLayout>
 </template>

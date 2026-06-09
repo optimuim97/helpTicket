@@ -16,7 +16,7 @@ class AppSettingSeeder extends Seeder
             // Branding
             [
                 'key' => 'app_name',
-                'value' => 'HELPTICKET',
+                'value' => "Port Autonome d'Abidjan",
                 'type' => 'string',
                 'group' => 'branding',
                 'label' => 'Nom de l\'application',
@@ -24,7 +24,7 @@ class AppSettingSeeder extends Seeder
             ],
             [
                 'key' => 'app_tagline',
-                'value' => 'Un ticket, un déclic, HELPTICKET c\'est magique',
+                'value' => 'Plateforme support & intervention — DSI',
                 'type' => 'string',
                 'group' => 'branding',
                 'label' => 'Slogan',
@@ -32,11 +32,11 @@ class AppSettingSeeder extends Seeder
             ],
             [
                 'key' => 'app_logo',
-                'value' => 'logos/helpticket-logo.png',
+                'value' => null,
                 'type' => 'file',
                 'group' => 'branding',
                 'label' => 'Logo',
-                'description' => 'Le logo de l\'application',
+                'description' => 'Logo affiché dans l\'interface (laisser vide pour utiliser /logo/logo_port.jpg)',
             ],
 
             // General

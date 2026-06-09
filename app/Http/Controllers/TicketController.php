@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\EquipmentAssignment;
+use App\Models\InterventionSheet;
 use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\TicketType;
@@ -98,11 +100,17 @@ class TicketController extends Controller
         $this->authorize('create', Ticket::class);
 
         return Inertia::render('Tickets/Create', [
-            'types'      => TicketType::allCached(),
-            'channels'   => TicketChannel::allCached(),
-            'priorities' => TicketPriority::allCached(),
-            'projects'   => Project::orderBy('name')->get(['id', 'name', 'status']),
+            'types'                => TicketType::allCached(),
+            'channels'             => TicketChannel::allCached(),
+            'priorities'           => TicketPriority::allCached(),
+            'projects'             => Project::orderBy('name')->get(['id', 'name', 'status']),
+            'users'                => User::whereHas('roles', fn ($q) => $q->whereIn('name', ['Agent Helpdesk', 'Technicien', 'Superviseur']))
+                ->orderBy('name')->get(['id', 'name']),
             'preselectedProjectId' => request()->query('project_id'),
+            'interventionSheets'   => InterventionSheet::select('id', 'reference', 'site', 'agent_name', 'status')
+                ->latest()->limit(100)->get(),
+            'equipmentAssignments' => EquipmentAssignment::select('id', 'reference', 'agent_name', 'equipment_type', 'status')
+                ->latest()->limit(100)->get(),
         ]);
     }
 
@@ -114,19 +122,83 @@ class TicketController extends Controller
         $this->authorize('create', Ticket::class);
 
         $validated = $request->validate([
-            'project_id'  => 'nullable|exists:projects,id',
-            'type_id'     => 'required|exists:ticket_types,id',
-            'channel_id'  => 'required|exists:ticket_channels,id',
-            'priority_id' => 'required|exists:ticket_priorities,id',
-            'subject'     => 'required|string|max:255',
-            'description' => 'required|string',
-            'notes'       => 'nullable|string',
-            'due_date'    => 'nullable|date|after:now',
+            'project_id'    => 'nullable|exists:projects,id',
+            'type_id'       => 'required|exists:ticket_types,id',
+            'channel_id'    => 'required|exists:ticket_channels,id',
+            'priority_id'   => 'required|exists:ticket_priorities,id',
+            'subject'       => 'required|string|max:255',
+            'description'   => 'required|string',
+            'notes'         => 'nullable|string',
+            'assigned_to'   => 'nullable|exists:users,id',
+            'due_date'      => 'nullable|date|after:now',
+
+            // Soit on lie à une fiche existante…
+            'linkable_type' => 'nullable|in:intervention_sheet,equipment_assignment',
+            'linkable_id'   => 'nullable|integer|required_with:linkable_type',
+
+            // …soit on crée une fiche en parallèle au ticket.
+            'create_intervention_sheet'              => 'nullable|boolean',
+            'intervention_sheet.site'                => 'required_if:create_intervention_sheet,true|nullable|string|max:255',
+            'intervention_sheet.building'            => 'required_if:create_intervention_sheet,true|nullable|string|max:255',
+            'intervention_sheet.agent_name'          => 'required_if:create_intervention_sheet,true|nullable|string|max:255',
+            'intervention_sheet.incidence'           => 'nullable|in:critique,majeur,mineur',
+            'intervention_sheet.reported_fault'      => 'nullable|string',
+
+            'create_equipment_assignment'              => 'nullable|boolean',
+            'equipment_assignment.equipment_type'      => 'required_if:create_equipment_assignment,true|nullable|string|max:255',
+            'equipment_assignment.equipment_model'     => 'required_if:create_equipment_assignment,true|nullable|string|max:255',
+            'equipment_assignment.equipment_serial'    => 'required_if:create_equipment_assignment,true|nullable|string|max:255',
+            'equipment_assignment.agent_matricule'     => 'required_if:create_equipment_assignment,true|nullable|string|max:50',
+            'equipment_assignment.agent_name'          => 'required_if:create_equipment_assignment,true|nullable|string|max:255',
+            'equipment_assignment.agent_direction'     => 'nullable|string|max:255',
+            'equipment_assignment.agent_department'    => 'nullable|string|max:255',
+            'equipment_assignment.operation_type'      => 'nullable|in:affectation,remplacement',
         ]);
 
         $defaultStatus = Cache::remember('status_id_nouveau', 3600, fn () =>
             TicketStatus::where('name', 'Nouveau')->first()
         );
+
+        $linkableType = $validated['linkable_type'] ?? null;
+        $linkableId   = $validated['linkable_id'] ?? null;
+
+        // Création éventuelle d'une fiche d'intervention liée
+        if ($request->boolean('create_intervention_sheet') && empty($linkableType)) {
+            $sheet = InterventionSheet::create([
+                'site'           => $validated['intervention_sheet']['site'],
+                'building'       => $validated['intervention_sheet']['building'],
+                'agent_name'     => $validated['intervention_sheet']['agent_name'],
+                'incidence'      => $validated['intervention_sheet']['incidence'] ?? 'mineur',
+                'reported_fault' => $validated['intervention_sheet']['reported_fault'] ?? null,
+                'status'         => 'brouillon',
+                'start_date'     => now(),
+                'created_by'     => $request->user()->id,
+            ]);
+            $linkableType = 'intervention_sheet';
+            $linkableId   = $sheet->id;
+        }
+
+        // Création éventuelle d'une fiche d'affectation liée
+        if ($request->boolean('create_equipment_assignment') && empty($linkableType)) {
+            $assignment = EquipmentAssignment::create([
+                'equipment_type'   => $validated['equipment_assignment']['equipment_type'],
+                'equipment_model'  => $validated['equipment_assignment']['equipment_model'],
+                'equipment_serial' => $validated['equipment_assignment']['equipment_serial'],
+                'agent_matricule'  => $validated['equipment_assignment']['agent_matricule'],
+                'agent_name'       => $validated['equipment_assignment']['agent_name'],
+                'agent_direction'  => $validated['equipment_assignment']['agent_direction'] ?? '',
+                'agent_department' => $validated['equipment_assignment']['agent_department'] ?? '',
+                'operation_type'   => $validated['equipment_assignment']['operation_type'] ?? 'affectation',
+                'status'           => 'brouillon',
+                'created_by'       => $request->user()->id,
+            ]);
+            // Pré-créer les 3 slots de validation
+            foreach (['chef_atelier', 'utilisateur', 'chef_service'] as $role) {
+                $assignment->validations()->create(['validator_role' => $role]);
+            }
+            $linkableType = 'equipment_assignment';
+            $linkableId   = $assignment->id;
+        }
 
         $ticket = Ticket::create([
             'ticket_number' => $generator->generate(),
@@ -138,8 +210,11 @@ class TicketController extends Controller
             'subject'       => $validated['subject'],
             'description'   => $validated['description'],
             'notes'         => $validated['notes'] ?? null,
+            'assigned_to'   => $validated['assigned_to'] ?? null,
             'created_by'    => $request->user()->id,
             'due_date'      => $validated['due_date'] ?? null,
+            'linkable_type' => $linkableType,
+            'linkable_id'   => $linkableId,
         ]);
 
         $supervisors = Cache::remember('users_role_superviseur', 300, fn () =>
@@ -195,6 +270,7 @@ class TicketController extends Controller
             'history.user',
             'assignments.assignedFrom',
             'assignments.assignedTo',
+            'linkable',
         ]);
 
         $users = null;

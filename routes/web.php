@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AppSettingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EquipmentAssignmentController;
+use App\Http\Controllers\InterventionSheetController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
@@ -52,6 +54,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/global-statistics', [ReportController::class, 'globalStatistics'])->name('reports.global-statistics');
 
     // User Management
+    Route::get('users/search', [UserController::class, 'search'])->name('users.search');
     Route::resource('users', UserController::class)->except(['show']);
 
     // Roles & Permissions Management
@@ -66,6 +69,16 @@ Route::middleware('auth')->group(function () {
 
     // Services Management
     Route::resource('services', ServiceController::class);
+
+    // Equipment Assignments (DL-FTE-01)
+    Route::resource('equipment-assignments', EquipmentAssignmentController::class);
+    Route::post('equipment-assignments/{equipmentAssignment}/sign/{role}', [EquipmentAssignmentController::class, 'sign'])
+        ->name('equipment-assignments.sign');
+
+    // Intervention Sheets (DL-FTI-01)
+    Route::resource('intervention-sheets', InterventionSheetController::class);
+    Route::post('intervention-sheets/{interventionSheet}/sign/{role}', [InterventionSheetController::class, 'sign'])
+        ->name('intervention-sheets.sign');
 
     // Settings (Superviseur only)
     Route::get('/settings', [AppSettingController::class, 'index'])->name('settings.index');

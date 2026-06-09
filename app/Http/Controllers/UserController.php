@@ -7,6 +7,7 @@ use App\Http\Requests\Users\UpdateUserRequest;
 use App\Models\Service;
 use App\Models\User;
 use App\Services\UserService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -27,58 +28,65 @@ class UserController extends Controller
      * Display a listing of users.
      */
     public function index(Request $request): Response
-    { 
-        // Check permission
-        // if (!$request->user()->can('view_users')) {
-        //     abort(403, 'Accès refusé. Vous n\'avez pas la permission de voir les utilisateurs.');
-        // }
-
-        // Get filters from request
+    {
         $filters = [
             'role' => $request->get('role'),
             'service_id' => $request->get('service_id'),
             'search' => $request->get('search'),
         ];
 
-        $usersCollection = $this->userService->getAllUsers(array_filter($filters));
-        
-        // Paginate manually
-        $perPage = 15;
-        $page = $request->get('page', 1);
-        $total = $usersCollection->count();
-        $lastPage = ceil($total / $perPage);
-        $from = (($page - 1) * $perPage) + 1;
-        $to = min($page * $perPage, $total);
-        $users = $usersCollection->slice(($page - 1) * $perPage, $perPage)->values();
+        $query = User::query()
+            ->with(['roles:id,name', 'service:id,name', 'position:id,fonction,metier'])
+            ->select(['id', 'matricule', 'name', 'email', 'numero_fixe', 'numero_flotte', 'service_id', 'position_id', 'created_at']);
 
-        // Generate pagination links
-        $links = [];
-        $links[] = ['url' => $page > 1 ? route('users.index', ['page' => $page - 1] + $filters) : null, 'label' => '&laquo; Précédent', 'active' => false];
-        
-        for ($i = 1; $i <= $lastPage; $i++) {
-            $links[] = [
-                'url' => route('users.index', ['page' => $i] + $filters),
-                'label' => (string) $i,
-                'active' => $i === $page,
-            ];
+        if (! empty($filters['role'])) {
+            $query->role($filters['role']);
         }
-        
-        $links[] = ['url' => $page < $lastPage ? route('users.index', ['page' => $page + 1] + $filters) : null, 'label' => 'Suivant &raquo;', 'active' => false];
+        if (! empty($filters['service_id'])) {
+            $query->where('service_id', $filters['service_id']);
+        }
+        if (! empty($filters['search'])) {
+            $term = $filters['search'];
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'like', "%{$term}%")
+                    ->orWhere('email', 'like', "%{$term}%")
+                    ->orWhere('matricule', 'like', "%{$term}%");
+            });
+        }
+
+        $users = $query->orderBy('name')
+            ->paginate(15)
+            ->withQueryString();
 
         return Inertia::render('Users/Index', [
-            'users' => [
-                'data' => $users,
-                'current_page' => $page,
-                'per_page' => $perPage,
-                'total' => $total,
-                'last_page' => $lastPage,
-                'from' => $from,
-                'to' => $to,
-                'links' => $links,
-            ],
-            'roles' => Role::all(),
-            'filters' => $filters,
+            'users' => $users,
+            'roles' => Role::all(['id', 'name']),
+            'filters' => array_filter($filters, fn ($v) => $v !== null && $v !== ''),
         ]);
+    }
+
+    /**
+     * Recherche d'utilisateurs pour les autocomplétions (annuaire, affectations…).
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->get('q', ''));
+
+        $query = User::with(['service:id,name', 'position:id,fonction,metier'])
+            ->select(['id', 'matricule', 'name', 'email', 'numero_fixe', 'numero_flotte', 'service_id', 'position_id']);
+
+        if ($q !== '') {
+            $like = '%'.$q.'%';
+            $query->where(function ($w) use ($like) {
+                $w->where('name', 'like', $like)
+                    ->orWhere('matricule', 'like', $like)
+                    ->orWhere('email', 'like', $like);
+            });
+        }
+
+        $users = $query->orderBy('name')->limit(20)->get();
+
+        return response()->json($users);
     }
 
     /**

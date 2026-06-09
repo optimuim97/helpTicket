@@ -2,18 +2,69 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 
-const loading = ref(false);
+// Barre de progression top (style YouTube / NProgress) — non bloquante.
+// - Délai de 180 ms avant affichage : les chargements instantanés ne flashent pas.
+// - Progression auto qui se ralentit (jamais 100% avant le finish).
+// - Complète à 100 % puis fade-out au `finish`.
 
-let removeStart, removeFinish;
+const visible = ref(false);
+const progress = ref(0);
+
+let showTimer = null;
+let progressTimer = null;
+let removeStart, removeProgress, removeFinish, removeError;
+
+const startTimers = () => {
+    clearTimeout(showTimer);
+    clearInterval(progressTimer);
+    showTimer = setTimeout(() => {
+        visible.value = true;
+        progress.value = 8;
+        progressTimer = setInterval(() => {
+            // approche 90% asymptotiquement, jamais plus
+            if (progress.value < 90) {
+                const remaining = 90 - progress.value;
+                progress.value += Math.max(0.3, remaining * 0.06);
+            }
+        }, 200);
+    }, 180);
+};
+
+const finishTimers = () => {
+    clearTimeout(showTimer);
+    clearInterval(progressTimer);
+    if (visible.value) {
+        progress.value = 100;
+        // laisse le temps à la transition de jouer
+        setTimeout(() => {
+            visible.value = false;
+            progress.value = 0;
+        }, 250);
+    } else {
+        progress.value = 0;
+    }
+};
 
 onMounted(() => {
-    removeStart = router.on('start', () => { loading.value = true; });
-    removeFinish = router.on('finish', () => { loading.value = false; });
+    removeStart = router.on('start', startTimers);
+    removeProgress = router.on('progress', (event) => {
+        // Si Inertia envoie un événement de progression (uploads), on s'aligne dessus
+        if (event.detail.progress?.percentage) {
+            const p = event.detail.progress.percentage;
+            if (p > progress.value) progress.value = Math.min(p, 92);
+        }
+    });
+    removeFinish = router.on('finish', finishTimers);
+    removeError = router.on('error', finishTimers);
 });
 
 onUnmounted(() => {
+    clearTimeout(showTimer);
+    clearInterval(progressTimer);
     removeStart?.();
+    removeProgress?.();
     removeFinish?.();
+    removeError?.();
 });
 </script>
 
@@ -25,32 +76,24 @@ onUnmounted(() => {
         leave-to-class="opacity-0"
     >
         <div
-            v-if="loading"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm"
+            v-if="visible"
+            class="pointer-events-none fixed inset-x-0 top-0 z-[60] h-0.5"
             aria-live="polite"
             aria-label="Chargement en cours"
+            role="progressbar"
+            :aria-valuenow="Math.round(progress)"
+            aria-valuemin="0"
+            aria-valuemax="100"
         >
-            <div class="flex flex-col items-center gap-3">
-                <svg
-                    class="h-10 w-10 animate-spin text-indigo-600"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                >
-                    <circle
-                        class="opacity-25"
-                        cx="12" cy="12" r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                    />
-                    <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
-                </svg>
-                <span class="text-sm font-medium text-gray-600">Chargement…</span>
-            </div>
+            <div
+                class="h-full bg-gradient-to-r from-primary via-accent to-primary shadow-[0_0_10px_rgba(0,141,220,0.7)] transition-[width] duration-200 ease-out"
+                :style="{ width: progress + '%' }"
+            ></div>
+            <!-- petit shimmer pour donner du mouvement -->
+            <div
+                class="absolute right-0 top-0 h-full w-12 -translate-x-2 rounded-full bg-white/60 blur-sm"
+                :style="{ left: 'calc(' + progress + '% - 3rem)' }"
+            ></div>
         </div>
     </Transition>
 </template>

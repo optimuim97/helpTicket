@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Facades\Cache;
 
 class Ticket extends Model
@@ -27,6 +28,8 @@ class Ticket extends Model
         'resolved_at',
         'closed_at',
         'due_date',
+        'linkable_type',
+        'linkable_id',
     ];
 
     protected $casts = [
@@ -89,6 +92,11 @@ class Ticket extends Model
     public function assignments(): HasMany
     {
         return $this->hasMany(TicketAssignment::class);
+    }
+
+    public function linkable(): MorphTo
+    {
+        return $this->morphTo();
     }
 
     // Scopes

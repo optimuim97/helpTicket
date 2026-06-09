@@ -2,29 +2,34 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import TextInput from '@/Components/TextInput.vue';
+import TableSkeleton from '@/Components/TableSkeleton.vue';
+import { useInertiaLoading } from '@/composables/useInertiaLoading';
+
+const { isLoading } = useInertiaLoading();
 
 const props = defineProps({
     projects: Object,
-    filters:  Object,
+    filters: Object,
     statuses: Object,
 });
 
 const search = ref(props.filters?.search ?? '');
 const status = ref(props.filters?.status ?? '');
 
-const statusColors = {
-    active:    'bg-green-100 text-green-800',
-    on_hold:   'bg-yellow-100 text-yellow-800',
-    completed: 'bg-blue-100 text-blue-800',
-    cancelled: 'bg-red-100 text-red-800',
+const statusBadge = {
+    active:    'bg-emerald-100 text-emerald-700',
+    on_hold:   'bg-accent-100 text-accent-700',
+    completed: 'bg-primary-100 text-primary-700',
+    cancelled: 'bg-red-100 text-red-700',
 };
 
 let searchTimeout = null;
-watch(search, (val) => {
+watch(search, () => {
     clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => applyFilters(), 400);
+    searchTimeout = setTimeout(applyFilters, 400);
 });
-watch(status, () => applyFilters());
+watch(status, applyFilters);
 
 function applyFilters() {
     router.get(route('projects.index'), {
@@ -34,10 +39,12 @@ function applyFilters() {
 }
 
 function deleteProject(project) {
-    if (confirm(`Supprimer le projet "${project.name}" ? Cette action est irréversible.`)) {
+    if (confirm(`Supprimer le projet « ${project.name} » ? Action irréversible.`)) {
         router.delete(route('projects.destroy', project.id));
     }
 }
+
+const selectClass = 'block w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-primary focus:ring-primary';
 </script>
 
 <template>
@@ -45,143 +52,111 @@ function deleteProject(project) {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                    Gestion des projets
-                </h2>
-                <Link
-                    :href="route('projects.create')"
-                    class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-                >
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Projets</h1>
+                    <p class="text-sm text-slate-500">Suivez l'avancement et associez vos tickets.</p>
+                </div>
+                <Link :href="route('projects.create')" class="btn-accent">
+                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
                     Nouveau projet
                 </Link>
             </div>
         </template>
 
-        <div class="py-12">
-            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-4">
-
-                <!-- Filtres -->
-                <div class="flex gap-3">
-                    <input
-                        v-model="search"
-                        type="text"
-                        placeholder="Rechercher un projet…"
-                        class="w-64 rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    />
-                    <select
-                        v-model="status"
-                        class="rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    >
-                        <option value="">Tous les statuts</option>
-                        <option v-for="(label, key) in statuses" :key="key" :value="key">
-                            {{ label }}
-                        </option>
-                    </select>
-                </div>
-
-                <!-- Tableau -->
-                <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nom</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Statut</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Tickets</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Échéance</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Créé par</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 bg-white">
-                                    <tr v-if="projects.data.length === 0">
-                                        <td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500">
-                                            Aucun projet trouvé.
-                                        </td>
-                                    </tr>
-                                    <tr v-for="project in projects.data" :key="project.id" class="hover:bg-gray-50">
-                                        <td class="px-6 py-4">
-                                            <Link
-                                                :href="route('projects.show', project.id)"
-                                                class="text-sm font-medium text-indigo-600 hover:text-indigo-900"
-                                            >
-                                                {{ project.name }}
-                                            </Link>
-                                            <p v-if="project.description" class="mt-0.5 text-xs text-gray-400 line-clamp-1">
-                                                {{ project.description }}
-                                            </p>
-                                        </td>
-                                        <td class="whitespace-nowrap px-6 py-4">
-                                            <span
-                                                class="inline-flex rounded-full px-2 text-xs font-semibold leading-5"
-                                                :class="statusColors[project.status]"
-                                            >
-                                                {{ statuses[project.status] ?? project.status }}
-                                            </span>
-                                        </td>
-                                        <td class="whitespace-nowrap px-6 py-4">
-                                            <span class="inline-flex rounded-full bg-blue-100 px-2 text-xs font-semibold leading-5 text-blue-800">
-                                                {{ project.tickets_count }}
-                                            </span>
-                                        </td>
-                                        <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                                            {{ project.due_date
-                                                ? new Date(project.due_date).toLocaleDateString('fr-FR')
-                                                : '—' }}
-                                        </td>
-                                        <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                                            {{ project.created_by?.name ?? '—' }}
-                                        </td>
-                                        <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                                            <Link
-                                                :href="route('projects.show', project.id)"
-                                                class="mr-3 text-gray-600 hover:text-gray-900"
-                                            >
-                                                Voir
-                                            </Link>
-                                            <Link
-                                                :href="route('projects.edit', project.id)"
-                                                class="mr-3 text-indigo-600 hover:text-indigo-900"
-                                            >
-                                                Modifier
-                                            </Link>
-                                            <button
-                                                @click="deleteProject(project)"
-                                                class="text-red-600 hover:text-red-900"
-                                            >
-                                                Supprimer
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Pagination -->
-                        <div v-if="projects.last_page > 1" class="mt-4 flex justify-between text-sm text-gray-600">
-                            <span>
-                                {{ projects.from }}–{{ projects.to }} sur {{ projects.total }} projets
-                            </span>
-                            <div class="flex gap-1">
-                                <Link
-                                    v-for="link in projects.links"
-                                    :key="link.label"
-                                    :href="link.url ?? '#'"
-                                    v-html="link.label"
-                                    class="rounded px-3 py-1"
-                                    :class="link.active
-                                        ? 'bg-indigo-600 text-white'
-                                        : link.url
-                                            ? 'hover:bg-gray-100'
-                                            : 'cursor-default opacity-40'"
-                                />
-                            </div>
-                        </div>
+        <div class="space-y-6">
+            <section class="card p-5">
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div class="md:col-span-2">
+                        <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Recherche</label>
+                        <TextInput v-model="search" type="text" placeholder="Rechercher un projet…" class="w-full" />
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Statut</label>
+                        <select v-model="status" :class="selectClass">
+                            <option value="">Tous</option>
+                            <option v-for="(label, key) in statuses" :key="key" :value="key">{{ label }}</option>
+                        </select>
                     </div>
                 </div>
-            </div>
+            </section>
+
+            <section class="card overflow-hidden">
+                <div v-if="!isLoading && projects.data.length === 0" class="px-6 py-16 text-center text-sm text-slate-500">
+                    Aucun projet trouvé.
+                </div>
+                <div v-else class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                <th class="px-6 py-3">Nom</th>
+                                <th class="px-6 py-3">Statut</th>
+                                <th class="px-6 py-3">Tickets</th>
+                                <th class="px-6 py-3">Échéance</th>
+                                <th class="px-6 py-3">Créé par</th>
+                                <th class="px-6 py-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <TableSkeleton v-if="isLoading" :rows="6" :cols="6" />
+                            <tr v-for="project in (isLoading ? [] : projects.data)" :key="project.id" class="transition hover:bg-slate-50">
+                                <td class="px-6 py-4">
+                                    <Link
+                                        :href="route('projects.show', project.id)"
+                                        class="text-sm font-semibold text-primary hover:text-primary-700"
+                                    >
+                                        {{ project.name }}
+                                    </Link>
+                                    <p v-if="project.description" class="mt-0.5 line-clamp-1 text-xs text-slate-500">
+                                        {{ project.description }}
+                                    </p>
+                                </td>
+                                <td class="whitespace-nowrap px-6 py-4">
+                                    <span :class="['badge', statusBadge[project.status]]">
+                                        {{ statuses[project.status] ?? project.status }}
+                                    </span>
+                                </td>
+                                <td class="whitespace-nowrap px-6 py-4">
+                                    <span class="badge bg-primary-100 text-primary-700">{{ project.tickets_count }}</span>
+                                </td>
+                                <td class="whitespace-nowrap px-6 py-4 text-slate-600">
+                                    {{ project.due_date ? new Date(project.due_date).toLocaleDateString('fr-FR') : '—' }}
+                                </td>
+                                <td class="whitespace-nowrap px-6 py-4 text-slate-600">
+                                    {{ project.created_by?.name ?? '—' }}
+                                </td>
+                                <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
+                                    <Link :href="route('projects.show', project.id)" class="font-medium text-slate-500 hover:text-slate-900">Voir</Link>
+                                    <Link :href="route('projects.edit', project.id)" class="ml-4 font-medium text-primary hover:text-primary-700">Modifier</Link>
+                                    <button @click="deleteProject(project)" class="ml-4 font-medium text-red-600 hover:text-red-700">Supprimer</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div v-if="projects.last_page > 1" class="flex flex-col gap-3 border-t border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-sm text-slate-600">
+                        <span class="font-semibold">{{ projects.from }}</span>–<span class="font-semibold">{{ projects.to }}</span>
+                        sur <span class="font-semibold">{{ projects.total }}</span>
+                    </p>
+                    <nav class="flex flex-wrap gap-1">
+                        <Link
+                            v-for="link in projects.links"
+                            :key="link.label"
+                            :href="link.url ?? '#'"
+                            v-html="link.label"
+                            :class="[
+                                'min-w-[2.25rem] rounded-md px-3 py-1.5 text-center text-sm transition',
+                                link.active ? 'bg-primary text-white shadow-soft' : 'border border-slate-200 text-slate-700 hover:bg-slate-50',
+                                !link.url ? 'pointer-events-none opacity-40' : '',
+                            ]"
+                        />
+                    </nav>
+                </div>
+            </section>
         </div>
     </AuthenticatedLayout>
 </template>

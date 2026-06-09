@@ -21,9 +21,9 @@ const form = useForm({
     service_id: '',
 });
 
-const submit = () => {
-    form.post(route('users.store'));
-};
+const submit = () => form.post(route('users.store'));
+
+const selectClass = 'mt-1.5 block w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-primary focus:ring-primary';
 </script>
 
 <template>
@@ -31,107 +31,72 @@ const submit = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                Créer un utilisateur
-            </h2>
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Créer un utilisateur</h1>
+                <p class="text-sm text-slate-500">Renseignez les informations du compte.</p>
+            </div>
         </template>
 
-        <div class="py-12">
-            <div class="mx-auto max-w-2xl sm:px-6 lg:px-8">
-                <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <form @submit.prevent="submit">
-                            <div>
-                                <InputLabel for="name" value="Nom *" />
-                                <TextInput
-                                    id="name"
-                                    v-model="form.name"
-                                    type="text"
-                                    class="mt-1 block w-full"
-                                    required
-                                    autofocus
-                                />
-                                <InputError class="mt-2" :message="form.errors.name" />
-                            </div>
-
-                            <div class="mt-4">
-                                <InputLabel for="email" value="Email *" />
-                                <TextInput
-                                    id="email"
-                                    v-model="form.email"
-                                    type="email"
-                                    class="mt-1 block w-full"
-                                    required
-                                />
-                                <InputError class="mt-2" :message="form.errors.email" />
-                            </div>
-
-                            <div class="mt-4">
-                                <InputLabel for="role" value="Rôle *" />
-                                <select
-                                    id="role"
-                                    v-model="form.role"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                    required
-                                >
-                                    <option value="">Sélectionner un rôle</option>
-                                    <option v-for="role in roles" :key="role.id" :value="role.name">
-                                        {{ role.name }}
-                                    </option>
-                                </select>
-                                <InputError class="mt-2" :message="form.errors.role" />
-                            </div>
-
-                            <div class="mt-4">
-                                <InputLabel for="service_id" value="Service" />
-                                <select
-                                    id="service_id"
-                                    v-model="form.service_id"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                >
-                                    <option value="">-- Aucun service --</option>
-                                    <option v-for="service in services" :key="service.id" :value="service.id">
-                                        {{ service.name }}
-                                    </option>
-                                </select>
-                                <InputError class="mt-2" :message="form.errors.service_id" />
-                            </div>
-
-                            <div class="mt-4">
-                                <InputLabel for="password" value="Mot de passe *" />
-                                <TextInput
-                                    id="password"
-                                    v-model="form.password"
-                                    type="password"
-                                    class="mt-1 block w-full"
-                                    required
-                                />
-                                <InputError class="mt-2" :message="form.errors.password" />
-                            </div>
-
-                            <div class="mt-4">
-                                <InputLabel for="password_confirmation" value="Confirmer le mot de passe *" />
-                                <TextInput
-                                    id="password_confirmation"
-                                    v-model="form.password_confirmation"
-                                    type="password"
-                                    class="mt-1 block w-full"
-                                    required
-                                />
-                            </div>
-
-                            <div class="mt-6 flex items-center justify-end space-x-4">
-                                <SecondaryButton type="button" @click="$inertia.visit(route('users.index'))">
-                                    Annuler
-                                </SecondaryButton>
-                                <PrimaryButton :disabled="form.processing">
-                                    Créer l'utilisateur
-                                </PrimaryButton>
-                            </div>
-                        </form>
+        <div class="mx-auto max-w-3xl">
+            <form @submit.prevent="submit" class="space-y-6">
+                <section class="card p-6">
+                    <h2 class="text-base font-semibold text-slate-800">Identité</h2>
+                    <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div class="md:col-span-2">
+                            <InputLabel for="name" value="Nom complet *" />
+                            <TextInput id="name" v-model="form.name" type="text" class="mt-1.5" required autofocus />
+                            <InputError class="mt-2" :message="form.errors.name" />
+                        </div>
+                        <div class="md:col-span-2">
+                            <InputLabel for="email" value="Email *" />
+                            <TextInput id="email" v-model="form.email" type="email" class="mt-1.5" required />
+                            <InputError class="mt-2" :message="form.errors.email" />
+                        </div>
                     </div>
+                </section>
+
+                <section class="card p-6">
+                    <h2 class="text-base font-semibold text-slate-800">Affectation</h2>
+                    <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div>
+                            <InputLabel for="role" value="Rôle *" />
+                            <select id="role" v-model="form.role" :class="selectClass" required>
+                                <option value="">Sélectionner</option>
+                                <option v-for="role in roles" :key="role.id" :value="role.name">{{ role.name }}</option>
+                            </select>
+                            <InputError class="mt-2" :message="form.errors.role" />
+                        </div>
+                        <div>
+                            <InputLabel for="service_id" value="Service" />
+                            <select id="service_id" v-model="form.service_id" :class="selectClass">
+                                <option value="">— Aucun —</option>
+                                <option v-for="service in services" :key="service.id" :value="service.id">{{ service.name }}</option>
+                            </select>
+                            <InputError class="mt-2" :message="form.errors.service_id" />
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card p-6">
+                    <h2 class="text-base font-semibold text-slate-800">Mot de passe</h2>
+                    <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div>
+                            <InputLabel for="password" value="Mot de passe *" />
+                            <TextInput id="password" v-model="form.password" type="password" class="mt-1.5" required />
+                            <InputError class="mt-2" :message="form.errors.password" />
+                        </div>
+                        <div>
+                            <InputLabel for="password_confirmation" value="Confirmer *" />
+                            <TextInput id="password_confirmation" v-model="form.password_confirmation" type="password" class="mt-1.5" required />
+                        </div>
+                    </div>
+                </section>
+
+                <div class="flex items-center justify-end gap-3">
+                    <SecondaryButton type="button" @click="$inertia.visit(route('users.index'))">Annuler</SecondaryButton>
+                    <PrimaryButton :disabled="form.processing">Créer l'utilisateur</PrimaryButton>
                 </div>
-            </div>
+            </form>
         </div>
     </AuthenticatedLayout>
 </template>

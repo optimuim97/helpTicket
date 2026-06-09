@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             ServiceSeeder::class,
             TicketLookupSeeder::class,
             AdminUserSeeder::class,
+            AnnuaireSeeder::class,
             AppSettingSeeder::class,
         ]);
     }

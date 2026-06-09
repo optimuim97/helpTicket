@@ -5,7 +5,16 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Projects\StoreProjectRequest;
 use App\Http\Requests\Projects\UpdateProjectRequest;
 use App\Models\Project;
+use App\Models\Ticket;
+use App\Models\TicketChannel;
+use App\Models\TicketPriority;
+use App\Models\TicketStatus;
+use App\Models\TicketType;
+use App\Models\User;
+use App\Services\TicketNumberGenerator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -41,19 +50,59 @@ class ProjectController extends Controller
         abort_unless($request->user()->can('create_projects'), 403);
 
         return Inertia::render('Projects/Create', [
-            'statuses' => Project::STATUSES,
+            'statuses'   => Project::STATUSES,
+            'types'      => TicketType::allCached(),
+            'priorities' => TicketPriority::allCached(),
+            'channels'   => TicketChannel::allCached(),
+            'users'      => User::whereHas('roles', fn ($q) => $q->whereIn('name', ['Agent Helpdesk', 'Technicien', 'Superviseur']))
+                ->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
-    public function store(StoreProjectRequest $request)
+    public function store(StoreProjectRequest $request, TicketNumberGenerator $generator)
     {
-        $project = Project::create([
-            ...$request->validated(),
-            'created_by' => $request->user()->id,
-        ]);
+        $data = $request->validated();
+        $tasks = $data['tasks'] ?? [];
+        unset($data['tasks']);
 
-        return redirect()->route('projects.show', $project)
-            ->with('success', 'Projet créé avec succès.');
+        $project = DB::transaction(function () use ($data, $tasks, $request, $generator) {
+            $project = Project::create([
+                ...$data,
+                'created_by' => $request->user()->id,
+            ]);
+
+            if (! empty($tasks)) {
+                $defaultStatus = Cache::remember('status_id_nouveau', 3600, fn () =>
+                    TicketStatus::where('name', 'Nouveau')->first()
+                );
+                $defaultChannel = TicketChannel::first();
+
+                foreach ($tasks as $task) {
+                    Ticket::create([
+                        'ticket_number' => $generator->generate(),
+                        'project_id'    => $project->id,
+                        'type_id'       => $task['type_id'],
+                        'channel_id'    => $task['channel_id'] ?? $defaultChannel?->id,
+                        'priority_id'   => $task['priority_id'],
+                        'status_id'     => $defaultStatus->id,
+                        'subject'       => $task['subject'],
+                        'description'   => $task['description'] ?? $task['subject'],
+                        'assigned_to'   => $task['assigned_to'] ?? null,
+                        'due_date'      => $task['due_date'] ?? null,
+                        'created_by'    => $request->user()->id,
+                    ]);
+                }
+            }
+
+            return $project;
+        });
+
+        $count = count($tasks);
+        $msg = $count > 0
+            ? "Projet créé avec {$count} tâche".($count > 1 ? 's' : '').'.'
+            : 'Projet créé avec succès.';
+
+        return redirect()->route('projects.show', $project)->with('success', $msg);
     }
 
     public function show(Request $request, Project $project): Response
