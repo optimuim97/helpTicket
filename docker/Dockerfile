@@ -1,29 +1,13 @@
 # ============================================================================
-# Stage 1 — build des assets front (Vite/Vue/Tailwind)
-# ============================================================================
-FROM node:20-alpine AS assets
-
-WORKDIR /app
-
-COPY package.json package-lock.json* ./
-RUN npm ci --no-audit --no-fund
-
-COPY resources/ ./resources/
-COPY vite.config.js tailwind.config.js postcss.config.js jsconfig.json ./
-COPY public/ ./public/
-
-RUN npm run build
-
-
-# ============================================================================
-# Stage 2 — install des dépendances PHP (composer, sans dev)
+# Stage 1 — install des dépendances PHP (composer, sans dev)
+# Doit passer AVANT le build assets : Vite/Ziggy a besoin de
+# vendor/tightenco/ziggy pour résoudre les routes côté JS.
 # ============================================================================
 FROM composer:2 AS vendor
 
 WORKDIR /app
 
 COPY composer.json composer.lock ./
-# Copier ce dont composer a besoin pour les autoload-discover
 COPY artisan ./
 COPY app/ ./app/
 COPY bootstrap/ ./bootstrap/
@@ -37,6 +21,27 @@ RUN composer install \
         --no-progress \
         --prefer-dist \
         --optimize-autoloader
+
+
+# ============================================================================
+# Stage 2 — build des assets front (Vite/Vue/Tailwind)
+# ============================================================================
+FROM node:20-alpine AS assets
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci --no-audit --no-fund
+
+# Sources front
+COPY resources/ ./resources/
+COPY vite.config.js tailwind.config.js postcss.config.js jsconfig.json ./
+COPY public/ ./public/
+
+# Ziggy doit être présent pour que Vite résolve `../../vendor/tightenco/ziggy`
+COPY --from=vendor /app/vendor/tightenco/ziggy ./vendor/tightenco/ziggy
+
+RUN npm run build
 
 
 # ============================================================================
