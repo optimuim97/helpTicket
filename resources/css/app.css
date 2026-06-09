@@ -1,3 +1,33 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    html {
+        @apply antialiased;
+    }
+    body {
+        @apply bg-slate-50 text-slate-800;
+    }
+}
+
+@layer components {
+    .btn-primary {
+        @apply inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-300 disabled:opacity-50;
+    }
+    .btn-accent {
+        @apply inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-300 disabled:opacity-50;
+    }
+    .btn-ghost {
+        @apply inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary-200;
+    }
+    .card {
+        @apply rounded-2xl bg-white shadow-card;
+    }
+    .stat-card {
+        @apply card relative overflow-hidden p-5;
+    }
+    .badge {
+        @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    }
+}

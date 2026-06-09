@@ -33,6 +33,13 @@ return [
             'active' => 'tickets.*',
         ],
         [
+            'label' => 'Projets',
+            'route' => 'projects.index',
+            'icon' => 'folder',
+            'permission' => 'view_projects',
+            'active' => 'projects.*',
+        ],
+        [
             'label' => 'Rapports',
             'route' => 'reports.agent-performance',
             'icon' => 'chart-bar',
@@ -40,32 +47,62 @@ return [
             'active' => 'reports.*',
         ],
         [
+            'label' => 'Fiches PAA',
+            'icon' => 'document',
+            'type' => 'dropdown',
+            'active' => 'equipment-assignments.*|intervention-sheets.*',
+            'children' => [
+                [
+                    'label' => 'Affectation d\'équipement',
+                    'route' => 'equipment-assignments.index',
+                    'icon' => 'monitor',
+                    'active' => 'equipment-assignments.*',
+                    'permission' => 'view_any_equipment_assignments',
+                ],
+                [
+                    'label' => 'Fiches d\'intervention',
+                    'route' => 'intervention-sheets.index',
+                    'icon' => 'wrench',
+                    'active' => 'intervention-sheets.*',
+                    'permission' => 'view_any_intervention_sheets',
+                ],
+            ],
+        ],
+        [
             'label' => 'Administration',
             'icon' => 'cog',
             'type' => 'dropdown',
             // Dropdown will show if user has ANY of the child permissions
             // MenuService filters children automatically
-            'active' => 'users.*|roles.*|services.*|permissions.*|settings.*',
+            'active' => 'users.*|roles.*|services.*|permissions.*|settings.*|projects.*',
             'children' => [
                 [
                     'label' => 'Utilisateurs',
                     'route' => 'users.index',
+                    'icon' => 'users',
+                    'active' => 'users.*',
                     'permission' => 'view_users',
                 ],
                 [
                     'label' => 'Rôles',
                     'route' => 'roles.index',
+                    'icon' => 'shield',
+                    'active' => 'roles.*',
                     'permission' => 'view_roles',
                 ],
                 [
                     'label' => 'Services',
                     'route' => 'services.index',
+                    'icon' => 'building',
+                    'active' => 'services.*',
                     'permission' => 'view_services',
                 ],
                 [
                     'label' => 'Permissions',
                     'route' => 'permissions.index',
-                    'permission' => 'view_roles', // Same as roles
+                    'icon' => 'key',
+                    'active' => 'permissions.*',
+                    'permission' => 'view_roles',
                 ],
                 [
                     'type' => 'separator',
@@ -73,6 +110,8 @@ return [
                 [
                     'label' => 'Paramètres',
                     'route' => 'settings.index',
+                    'icon' => 'sliders',
+                    'active' => 'settings.*',
                     'permission' => 'manage_settings',
                 ],
             ],
@@ -116,10 +155,28 @@ return [
             'active' => 'tickets.*',
         ],
         [
+            'label' => 'Projets',
+            'route' => 'projects.index',
+            'permission' => 'view_projects',
+            'active' => 'projects.*',
+        ],
+        [
             'label' => 'Rapports',
             'route' => 'reports.agent-performance',
             'permission' => 'view_reports',
             'active' => 'reports.*',
+        ],
+        [
+            'label' => 'Affectation équipement',
+            'route' => 'equipment-assignments.index',
+            'permission' => 'view_any_equipment_assignments',
+            'active' => 'equipment-assignments.*',
+        ],
+        [
+            'label' => 'Fiches intervention',
+            'route' => 'intervention-sheets.index',
+            'permission' => 'view_any_intervention_sheets',
+            'active' => 'intervention-sheets.*',
         ],
         [
             'label' => 'Utilisateurs',

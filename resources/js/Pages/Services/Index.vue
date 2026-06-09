@@ -2,112 +2,69 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
-defineProps({
-    services: Array,
-});
+defineProps({ services: Array });
 
 const deleteService = (service) => {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer le service "${service.name}" ? Les utilisateurs assignés seront dissociés du service.`)) {
+    if (confirm(`Supprimer le service « ${service.name} » ? Les utilisateurs assignés seront dissociés.`)) {
         router.delete(route('services.destroy', service.id));
     }
 };
 </script>
 
 <template>
-    <Head title="Gestion des services" />
+    <Head title="Services" />
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                    Gestion des services
-                </h2>
-                <Link
-                    :href="route('services.create')"
-                    class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-                >
-                    Créer un service
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Services</h1>
+                    <p class="text-sm text-slate-500">Organisation interne et affectations.</p>
+                </div>
+                <Link :href="route('services.create')" class="btn-accent">
+                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Nouveau service
                 </Link>
             </div>
         </template>
 
-        <div class="py-12">
-            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                                            Nom du service
-                                        </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                                            Description
-                                        </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                                            Utilisateurs
-                                        </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                                            Statut
-                                        </th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 bg-white">
-                                    <tr v-for="service in services" :key="service.id">
-                                        <td class="whitespace-nowrap px-6 py-4">
-                                            <div class="text-sm font-medium text-gray-900">
-                                                {{ service.name }}
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            <div class="text-sm text-gray-500">
-                                                {{ service.description || '-' }}
-                                            </div>
-                                        </td>
-                                        <td class="whitespace-nowrap px-6 py-4">
-                                            <span class="inline-flex rounded-full bg-blue-100 px-2 text-xs font-semibold leading-5 text-blue-800">
-                                                {{ service.users_count }}
-                                            </span>
-                                        </td>
-                                        <td class="whitespace-nowrap px-6 py-4">
-                                            <span 
-                                                v-if="service.is_active"
-                                                class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800"
-                                            >
-                                                Actif
-                                            </span>
-                                            <span 
-                                                v-else
-                                                class="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800"
-                                            >
-                                                Inactif
-                                            </span>
-                                        </td>
-                                        <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                                            <Link
-                                                :href="route('services.edit', service.id)"
-                                                class="text-indigo-600 hover:text-indigo-900 mr-4"
-                                            >
-                                                Modifier
-                                            </Link>
-                                            <button
-                                                @click="deleteService(service)"
-                                                class="text-red-600 hover:text-red-900"
-                                            >
-                                                Supprimer
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+        <section class="card overflow-hidden">
+            <div v-if="!services?.length" class="px-6 py-16 text-center text-sm text-slate-500">
+                Aucun service.
             </div>
-        </div>
+            <div v-else class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            <th class="px-6 py-3">Nom</th>
+                            <th class="px-6 py-3">Description</th>
+                            <th class="px-6 py-3">Utilisateurs</th>
+                            <th class="px-6 py-3">Statut</th>
+                            <th class="px-6 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr v-for="service in services" :key="service.id" class="transition hover:bg-slate-50">
+                            <td class="px-6 py-4 font-medium text-slate-900">{{ service.name }}</td>
+                            <td class="px-6 py-4 text-slate-500">{{ service.description || '—' }}</td>
+                            <td class="px-6 py-4">
+                                <span class="badge bg-primary-100 text-primary-700">{{ service.users_count }}</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span :class="['badge', service.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700']">
+                                    {{ service.is_active ? 'Actif' : 'Inactif' }}
+                                </span>
+                            </td>
+                            <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
+                                <Link :href="route('services.edit', service.id)" class="font-medium text-primary hover:text-primary-700">Modifier</Link>
+                                <button @click="deleteService(service)" class="ml-4 font-medium text-red-600 hover:text-red-700">Supprimer</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </AuthenticatedLayout>
 </template>

@@ -25,6 +25,10 @@ class User extends Authenticatable
         'email',
         'password',
         'service_id',
+        'position_id',
+        'matricule',
+        'numero_fixe',
+        'numero_flotte',
     ];
 
     /**
@@ -56,5 +60,10 @@ class User extends Authenticatable
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function position(): BelongsTo
+    {
+        return $this->belongsTo(Position::class);
     }
 }

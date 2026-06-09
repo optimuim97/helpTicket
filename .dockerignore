@@ -1,0 +1,51 @@
+.git
+.github
+.gitignore
+.editorconfig
+.vscode
+.idea
+
+node_modules
+vendor
+
+# Storage runtime (sera remonté en volume)
+storage/app/public/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/framework/testing/*
+storage/logs/*
+!storage/app/public/.gitkeep
+!storage/framework/cache/.gitkeep
+!storage/framework/sessions/.gitkeep
+!storage/framework/views/.gitkeep
+!storage/framework/testing/.gitkeep
+!storage/logs/.gitkeep
+
+# Tests
+tests
+phpunit.xml
+
+# Build outputs (rebuild dans l'image)
+public/build
+public/hot
+
+# Env (à fournir au runtime, pas inclus dans l'image)
+.env
+.env.*
+!.env.example
+!.env.docker.example
+
+# Logs & temp
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# Excels d'annuaire (volumineux, à monter en volume si besoin)
+public/excel

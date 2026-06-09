@@ -2,6 +2,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import Skeleton from '@/Components/Skeleton.vue';
+import { useInertiaLoading } from '@/composables/useInertiaLoading';
+
+const { isLoading } = useInertiaLoading();
 
 const props = defineProps({
     statistics: Object,
@@ -9,10 +13,9 @@ const props = defineProps({
 });
 
 const selectedRange = ref(props.dateRange);
+const changeRange = () => router.get(route('reports.global-statistics'), { range: selectedRange.value });
 
-const changeRange = () => {
-    router.get(route('reports.global-statistics'), { range: selectedRange.value });
-};
+const rangeLabels = { week: '7 jours', month: '30 jours', year: '1 an' };
 </script>
 
 <template>
@@ -20,16 +23,17 @@ const changeRange = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                    Statistiques globales
-                </h2>
-                <div class="flex items-center space-x-2">
-                    <label class="text-sm font-medium text-gray-700">Période:</label>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Statistiques globales</h1>
+                    <p class="text-sm text-slate-500">Vision agrégée de l'activité support.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-medium text-slate-600">Période</label>
                     <select
                         v-model="selectedRange"
                         @change="changeRange"
-                        class="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        class="rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-primary focus:ring-primary"
                     >
                         <option value="week">7 derniers jours</option>
                         <option value="month">30 derniers jours</option>
@@ -39,157 +43,107 @@ const changeRange = () => {
             </div>
         </template>
 
-        <div class="py-12">
-            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                <!-- Main Stats Card -->
-                <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
-                    <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div class="p-6">
-                            <div class="text-sm font-medium text-gray-500">
-                                Total tickets
-                            </div>
-                            <div class="mt-2 text-3xl font-bold text-gray-900">
-                                {{ statistics.total_tickets }}
-                            </div>
-                        </div>
-                    </div>
+        <div class="space-y-6">
+            <!-- KPIs -->
+            <section class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div class="stat-card">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total tickets</p>
+                    <Skeleton v-if="isLoading" width="w-20" height="h-8" class="mt-2" />
+                    <p v-else class="mt-2 text-3xl font-bold text-slate-900">{{ statistics.total_tickets }}</p>
+                </div>
+                <div class="stat-card">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Temps moyen</p>
+                    <Skeleton v-if="isLoading" width="w-20" height="h-8" class="mt-2" />
+                    <p v-else class="mt-2 text-3xl font-bold text-primary">{{ statistics.avg_handling_hours }}h</p>
+                </div>
+                <div class="stat-card">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Période analysée</p>
+                    <Skeleton v-if="isLoading" width="w-20" height="h-8" class="mt-2" />
+                    <p v-else class="mt-2 text-3xl font-bold text-slate-900">{{ rangeLabels[dateRange] || dateRange }}</p>
+                </div>
+            </section>
 
-                    <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div class="p-6">
-                            <div class="text-sm font-medium text-gray-500">
-                                Temps moyen de traitement
-                            </div>
-                            <div class="mt-2 text-3xl font-bold text-blue-600">
-                                {{ statistics.avg_handling_hours }}h
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div class="p-6">
-                            <div class="text-sm font-medium text-gray-500">
-                                Période d'analyse
-                            </div>
-                            <div class="mt-2 text-3xl font-bold text-gray-900">
-                                {{ dateRange === 'week' ? '7 jours' : dateRange === 'year' ? '1 an' : '30 jours' }}
+            <!-- Breakdowns -->
+            <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div class="card">
+                    <header class="border-b border-slate-100 px-6 py-4">
+                        <h3 class="text-base font-semibold text-slate-800">Par statut</h3>
+                    </header>
+                    <div class="p-6">
+                        <p v-if="!statistics.by_status.length" class="text-center text-sm text-slate-500">Aucune donnée.</p>
+                        <div v-else class="space-y-2">
+                            <div
+                                v-for="item in statistics.by_status"
+                                :key="item.status_id"
+                                class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3"
+                            >
+                                <span class="text-sm font-medium text-slate-700">{{ item.status.name }}</span>
+                                <span class="text-xl font-bold text-primary">{{ item.count }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Statistics Grid -->
-                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <!-- By Status -->
-                    <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div class="border-b border-gray-200 px-6 py-4">
-                            <h3 class="text-lg font-semibold text-gray-900">Par statut</h3>
-                        </div>
-                        <div class="p-6">
-                            <div v-if="statistics.by_status.length === 0" class="text-center text-gray-500">
-                                Aucune donnée
-                            </div>
-                            <div v-else class="space-y-3">
-                                <div
-                                    v-for="item in statistics.by_status"
-                                    :key="item.status_id"
-                                    class="flex items-center justify-between rounded-lg border border-gray-200 p-3"
-                                >
-                                    <div class="font-medium text-gray-900">
-                                        {{ item.status.name }}
-                                    </div>
-                                    <div class="text-2xl font-bold text-blue-600">
-                                        {{ item.count }}
-                                    </div>
+                <div class="card">
+                    <header class="border-b border-slate-100 px-6 py-4">
+                        <h3 class="text-base font-semibold text-slate-800">Par priorité</h3>
+                    </header>
+                    <div class="p-6">
+                        <p v-if="!statistics.by_priority.length" class="text-center text-sm text-slate-500">Aucune donnée.</p>
+                        <div v-else class="space-y-2">
+                            <div
+                                v-for="item in statistics.by_priority"
+                                :key="item.priority_id"
+                                class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <span :style="{ backgroundColor: item.priority.color }" class="inline-block h-2.5 w-2.5 rounded-full"></span>
+                                    <span class="text-sm font-medium text-slate-700">{{ item.priority.name }}</span>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- By Priority -->
-                    <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div class="border-b border-gray-200 px-6 py-4">
-                            <h3 class="text-lg font-semibold text-gray-900">Par priorité</h3>
-                        </div>
-                        <div class="p-6">
-                            <div v-if="statistics.by_priority.length === 0" class="text-center text-gray-500">
-                                Aucune donnée
-                            </div>
-                            <div v-else class="space-y-3">
-                                <div
-                                    v-for="item in statistics.by_priority"
-                                    :key="item.priority_id"
-                                    class="flex items-center justify-between rounded-lg border border-gray-200 p-3"
-                                >
-                                    <div class="flex items-center space-x-2">
-                                        <span
-                                            :style="{ backgroundColor: item.priority.color }"
-                                            class="inline-block h-3 w-3 rounded-full"
-                                        ></span>
-                                        <span class="font-medium text-gray-900">
-                                            {{ item.priority.name }}
-                                        </span>
-                                    </div>
-                                    <div class="text-2xl font-bold text-blue-600">
-                                        {{ item.count }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- By Type -->
-                    <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div class="border-b border-gray-200 px-6 py-4">
-                            <h3 class="text-lg font-semibold text-gray-900">Par type</h3>
-                        </div>
-                        <div class="p-6">
-                            <div v-if="statistics.by_type.length === 0" class="text-center text-gray-500">
-                                Aucune donnée
-                            </div>
-                            <div v-else class="space-y-3">
-                                <div
-                                    v-for="item in statistics.by_type"
-                                    :key="item.type_id"
-                                    class="flex items-center justify-between rounded-lg border border-gray-200 p-3"
-                                >
-                                    <div class="font-medium text-gray-900">
-                                        {{ item.type.name }}
-                                    </div>
-                                    <div class="text-2xl font-bold text-blue-600">
-                                        {{ item.count }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- By Channel -->
-                    <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div class="border-b border-gray-200 px-6 py-4">
-                            <h3 class="text-lg font-semibold text-gray-900">Par canal</h3>
-                        </div>
-                        <div class="p-6">
-                            <div v-if="statistics.by_channel.length === 0" class="text-center text-gray-500">
-                                Aucune donnée
-                            </div>
-                            <div v-else class="space-y-3">
-                                <div
-                                    v-for="item in statistics.by_channel"
-                                    :key="item.channel_id"
-                                    class="flex items-center justify-between rounded-lg border border-gray-200 p-3"
-                                >
-                                    <div class="font-medium text-gray-900">
-                                        {{ item.channel.name }}
-                                    </div>
-                                    <div class="text-2xl font-bold text-blue-600">
-                                        {{ item.count }}
-                                    </div>
-                                </div>
+                                <span class="text-xl font-bold text-primary">{{ item.count }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+
+                <div class="card">
+                    <header class="border-b border-slate-100 px-6 py-4">
+                        <h3 class="text-base font-semibold text-slate-800">Par type</h3>
+                    </header>
+                    <div class="p-6">
+                        <p v-if="!statistics.by_type.length" class="text-center text-sm text-slate-500">Aucune donnée.</p>
+                        <div v-else class="space-y-2">
+                            <div
+                                v-for="item in statistics.by_type"
+                                :key="item.type_id"
+                                class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3"
+                            >
+                                <span class="text-sm font-medium text-slate-700">{{ item.type.name }}</span>
+                                <span class="text-xl font-bold text-primary">{{ item.count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <header class="border-b border-slate-100 px-6 py-4">
+                        <h3 class="text-base font-semibold text-slate-800">Par canal</h3>
+                    </header>
+                    <div class="p-6">
+                        <p v-if="!statistics.by_channel.length" class="text-center text-sm text-slate-500">Aucune donnée.</p>
+                        <div v-else class="space-y-2">
+                            <div
+                                v-for="item in statistics.by_channel"
+                                :key="item.channel_id"
+                                class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3"
+                            >
+                                <span class="text-sm font-medium text-slate-700">{{ item.channel.name }}</span>
+                                <span class="text-xl font-bold text-primary">{{ item.count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </AuthenticatedLayout>
 </template>

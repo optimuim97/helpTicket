@@ -26,7 +26,7 @@ class TicketLookupSeeder extends Seeder
 
         // Seed ticket channels
         $channels = [
-            ['name' => 'Téléphone'],
+            // ['name' => 'Téléphone'],
             ['name' => 'Email'],
             ['name' => 'Application'],
             ['name' => 'Autre'],

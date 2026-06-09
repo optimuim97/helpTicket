@@ -51,10 +51,30 @@ class PermissionSeeder extends Seeder
             'edit_services',  // Alias for update_services (used in controllers)
             'delete_services',
             
+            // Projects permissions
+            'view_projects',
+            'create_projects',
+            'edit_projects',
+            'delete_projects',
+
             // Reports permissions
             'view_reports',
             'export_reports',
             
+            // Equipment Assignments permissions
+            'view_any_equipment_assignments',
+            'create_equipment_assignments',
+            'update_equipment_assignments',
+            'delete_equipment_assignments',
+            'validate_equipment_assignments',
+
+            // Intervention Sheets permissions
+            'view_any_intervention_sheets',
+            'create_intervention_sheets',
+            'update_intervention_sheets',
+            'delete_intervention_sheets',
+            'validate_intervention_sheets',
+
             // Settings permissions
             'manage_settings',
         ];
@@ -77,6 +97,14 @@ class PermissionSeeder extends Seeder
                 'create_tickets',
                 'update_tickets',
                 'view_users',
+                'view_projects',
+                'create_projects',
+                'view_any_equipment_assignments',
+                'create_equipment_assignments',
+                'update_equipment_assignments',
+                'view_any_intervention_sheets',
+                'create_intervention_sheets',
+                'update_intervention_sheets',
             ]);
         }
 
@@ -86,6 +114,13 @@ class PermissionSeeder extends Seeder
                 'view_own_tickets',
                 'update_tickets',
                 'resolve_tickets',
+                'view_projects',
+                'view_any_equipment_assignments',
+                'create_equipment_assignments',
+                'view_any_intervention_sheets',
+                'create_intervention_sheets',
+                'validate_equipment_assignments',
+                'validate_intervention_sheets',
             ]);
         }
     }
